@@ -65,11 +65,16 @@
     <None Include="App.config" />
     <None Include="packages.config" />
     <None Include="Release\EbisExporter.exe.config" />
-    <None Include="Release\EbisExporter.vshost.exe.config" />
-    <None Include="Release\EbisExporter.vshost.exe.manifest" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Release\Easy.Business.Client.dll" />
+    <Content Include="Release\Easy.Business.Common.dll" />
+    <Content Include="Release\Easy.Business.Core.dll" />
+    <Content Include="Release\EbisExporter.exe" />
+    <Content Include="Release\EbisExporter.pdb" />
     <Content Include="Release\EbisExporter.vshost.exe" />
+    <Content Include="Release\Newtonsoft.Json.dll" />
+    <Content Include="Release\Newtonsoft.Json.xml" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
