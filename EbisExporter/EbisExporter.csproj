@@ -65,6 +65,8 @@
     <None Include="App.config" />
     <None Include="packages.config" />
     <None Include="Release\EbisExporter.exe.config" />
+    <None Include="Release\EbisExporter.vshost.exe.config" />
+    <None Include="Release\EbisExporter.vshost.exe.manifest" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Release\Easy.Business.Client.dll" />
