@@ -424,6 +424,7 @@ namespace EbisExporter
                                 values += ");";
 
                                 query = insert + values;
+                                log.Debug(query);
 
                                 SqlTransaction indextransaction;
                                 using (SqlCommand indexcommand = new SqlCommand(query, connection)) // kommando für select und insert
@@ -474,6 +475,7 @@ namespace EbisExporter
 
                                                             //
                                                             query = insert + values;
+                                                            log.Debug(query);
 
                                                             using (SqlCommand blobcommand = new SqlCommand(query, connection)) // kommando für select und insert
                                                             {
@@ -529,6 +531,7 @@ namespace EbisExporter
                                                     values = " VALUES ('" + refid + "', '0','" + note.Owner + "', '" + note.Date + "', '" + note.Value + "')";
 
                                                     query = insert + values;
+                                                    log.Debug(query);
 
                                                     using (SqlCommand notecommand = new SqlCommand(query, connection)) // kommando für select und insert
                                                     {
