@@ -42,6 +42,10 @@
     <Reference Include="Easy.Business.Core">
       <HintPath>C:\Users\sergej.voltchek\Documents\Visual Studio 2015\Projects\AnilaServer\ExtDLL\EBIS_1_7_22\Easy.Business.Core.dll</HintPath>
     </Reference>
+    <Reference Include="log4net, Version=2.0.8.0, Culture=neutral, PublicKeyToken=669e0ddf0bb1aa2a, processorArchitecture=MSIL">
+      <HintPath>..\packages\log4net.2.0.8\lib\net45-full\log4net.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Newtonsoft.Json, Version=12.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.12.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>True</Private>
@@ -75,6 +79,9 @@
     <Content Include="Release\EbisExporter.exe" />
     <Content Include="Release\EbisExporter.pdb" />
     <Content Include="Release\EbisExporter.vshost.exe" />
+    <Content Include="Release\ebisexporterlog.xml" />
+    <Content Include="Release\log4net.dll" />
+    <Content Include="Release\log4net.xml" />
     <Content Include="Release\Newtonsoft.Json.dll" />
     <Content Include="Release\Newtonsoft.Json.xml" />
   </ItemGroup>

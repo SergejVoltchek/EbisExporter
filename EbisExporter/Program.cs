@@ -54,6 +54,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Threading;
 using System.Data;
+using log4net;
 using ezhelper = Easy.Business.Samples;
 
 namespace EbisExporter
@@ -66,9 +67,19 @@ namespace EbisExporter
         private static string applicationpath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
 
         /// <summary>
+        /// erzeugt den logger
+        /// </summary>
+        private static readonly ILog log = LogManager.GetLogger("EbisExporter");
+
+        /// <summary>
         /// name der konfigurationsdatei
         /// </summary>
         private const string propertyfilename = "ebisexporter.properties";
+
+        /// <summary>
+        /// logging konfiguration
+        /// </summary>
+        private const string logconfigfilename = "ebisexporterlog.xml";
 
         /// <summary>
         /// objekt mit geparsten parametern zum späteren verarbeiten 
@@ -162,25 +173,43 @@ namespace EbisExporter
         /// <param name="args"></param>
         static void Main(string[] args)
         {
+            log.Debug(string.Format("ebisexporter gestartet"));
+
             // property datei suchen
             string propertyfile = Path.Combine(applicationpath, propertyfilename);
 
+            log.Debug(string.Format("konfigurationsdatei: {0}", propertyfile));
+
             try
             {
+                // logging mit log4net
+                GlobalContext.Properties["LogPath"] = applicationpath;
+                log4net.Config.XmlConfigurator.Configure(new System.IO.FileInfo(Path.Combine(applicationpath, logconfigfilename)));
+
+                log.Debug(string.Format("log pfad: {0}", applicationpath));
+
                 // prüfen ob das propertyfile existiert oder erstellt es
                 CheckIfPropertyFile(propertyfile);
+
+                log.Debug(string.Format("Konfigurationfile gefunden"));
 
                 // einlesen und prüfen der konfiguration
                 properties = ReadAndParsePropertyFile(propertyfile);
 
+                log.Debug(string.Format("Konfigurationfile geparst"));
+
                 // öffnen der sql verbindung
                 sqlconnection = CreateSqlConnection(properties.ConnectionString);
+
+                log.Debug(string.Format("SQL Verbindung erzeugt"));
 
                 // öffnen der verbindung zum ebis server
                 ClientService service = new DefaultClientService(properties.ClientUrl); // client erzeugen
                 Instance instance = service.GetInstance(properties.Instance); // instanz suchen, sollte vorher angelegt sein ;-)
                 session = instance.Login(properties.ClientUser, properties.ClientPassword, new Dictionary<string, string>()); // einloggen
                 repository = session.GetRepository(properties.Repository);
+
+                log.Debug(string.Format("Verbindung zum EBIS Server erzeugt"));
 
                 // schema suchen und dt anhand dessen erstellen
                 foreach (DocumentSchema schema in repository.DocumentSchemes)
@@ -190,6 +219,8 @@ namespace EbisExporter
                     
                     // erzeugen der Tabellen
                     CreateExportTablesFromSchema(sqlconnection, schema);
+
+                    log.Debug(string.Format("tabellen erzeugt"));
                 }
 
                 /*
@@ -201,8 +232,13 @@ namespace EbisExporter
                 Thread referenceThread = new Thread(WriteReferences);
                 referenceThread.Start();
 
+                log.Debug(string.Format("Referenz-Thread gestartet"));
+
                 Thread exportThread = new Thread(Export);
                 exportThread.Start();
+
+                log.Debug(string.Format("Export-Thread gestartet"));
+
 
                 Console.Clear();
                 Console.CursorVisible = false;
@@ -241,6 +277,14 @@ namespace EbisExporter
                         {
                             Console.Clear();
                             Console.WriteLine("Vorgang durch Benutzer abgebrochen!");
+                        }
+
+                        if (finished)
+                        {
+                            Console.Clear();
+                            Console.WriteLine("Abgeschlossen!");
+                            Console.WriteLine("Referenz-Status: {0}", referenztaskstatus.ToString());
+                            Console.WriteLine("Export-Status: {0}", exporttaskstatus.ToString());
                         }
 
                         //
@@ -304,6 +348,9 @@ namespace EbisExporter
             // info enum setzen
             exporttaskstatus = Status.gestartet;
 
+            log.Debug("export gestartet");
+
+
             int errorcounter = 0;
             string query = string.Empty;
             string insert = string.Empty;
@@ -314,14 +361,20 @@ namespace EbisExporter
             {
                 // verbindung herstellen
                 connection.Open();
-                
+
+                log.Debug("datenbank verbindung geöffnet");
+
                 // go baby go...
                 while (true)
                 {
+                    log.Debug("suche referenzen gestartet");
+
                     referenzedRows = NotExportedReferences();
 
                     if (referenzedRows != null && referenzedRows.Length > 0)
                     {
+                        log.Debug(string.Format("{0} referenzen gefunden", referenzedRows.Length));
+
                         foreach (string row in referenzedRows)
                         {
                             /*
@@ -341,6 +394,8 @@ namespace EbisExporter
 
                             //
                             Document eexdocument = session.GetDocument(row);
+
+                            log.Debug(string.Format("exportiere dokument: {0}", eexdocument.Reference));
 
                             FieldContent[] allFields = eexdocument.Items.OfType<FieldContent>().ToArray();
                             BlobContent[] allBlobs = eexdocument.Items.OfType<BlobContent>().ToArray();
@@ -381,6 +436,8 @@ namespace EbisExporter
                                     indextransaction.Save(string.Format("{0}", docid));
                                     indexcommand.Transaction = indextransaction;
                                     indexcommand.StatementCompleted += Indexcommand_StatementCompleted;
+
+
 
                                     try
                                     {
@@ -424,9 +481,9 @@ namespace EbisExporter
 
                                                                 try
                                                                 {
-                                                                    if(blobcommand.ExecuteNonQuery() < 1)
+                                                                    if (blobcommand.ExecuteNonQuery() < 1)
                                                                         throw new Exception("Blob nicht eingefügt");
-                                                                        
+
                                                                 }
                                                                 catch (Exception blobexception)
                                                                 {
@@ -440,17 +497,22 @@ namespace EbisExporter
                                                             throw new FileNotFoundException(string.Format("Die exportierte Datei {0} konnte nicht gefunden werden", uniqueexportpath));
                                                         }
                                                     }
-                                                    catch(Exception storeblobexception)
+                                                    catch (Exception storeblobexception)
                                                     {
                                                         // dateien löschen falls welche schon exportiert wurden
                                                         try
                                                         {
                                                             Directory.Delete(blobpath, true);
                                                         }
-                                                        catch(Exception storedblobsdelete)
+                                                        catch (Exception storedblobsdelete)
                                                         {
+                                                            log.Fatal("Löschen der vorhandenen Blobs - Exception", storedblobsdelete);
+
                                                             throw new Exception(string.Format("Gespeicherten Dateien konnten nicht gelöscht werden. {0}", storedblobsdelete.Message));
                                                         }
+
+                                                        log.Fatal("Speichern von Blobs - Exception", storeblobexception);
+
 
                                                         // durchreichen ;-)
                                                         throw storeblobexception;
@@ -479,6 +541,8 @@ namespace EbisExporter
                                                         }
                                                         catch (Exception noteexception)
                                                         {
+                                                            log.Fatal("Notizenexport Exception", noteexception);
+
                                                             throw new Exception(string.Format("Notizenimport fuer Mappe: {0} ist fehlgeschlagen: {1}", docid, noteexception.Message));
                                                         }
                                                     }
@@ -491,9 +555,16 @@ namespace EbisExporter
 
                                         // 
                                         exporttaskstatustext = string.Format("Mappe {0} erfolgreich exportiert", docid);
+
+                                        log.Debug(exporttaskstatustext);
                                     }
                                     catch (Exception îndexexception)
                                     {
+                                        // 
+                                        exporttaskstatustext = "Fehler beim Exportieren. Rollback wird ausgeführt.";
+
+                                        log.Fatal("Fehler beim Exportieren. Rollback wird ausgeführt.", îndexexception);
+
                                         // 
                                         string indextransactionresultmessage = string.Empty;
                                         bool indextransactionresult = false;
@@ -509,14 +580,15 @@ namespace EbisExporter
                                             indextransactionresultmessage = "Rollback ausgeführt.";
 
                                         }
-                                        catch(Exception indexrollbackfailed)
+                                        catch (Exception indexrollbackfailed)
                                         {
                                             // error handling für rollback
                                             indextransactionresultmessage = indexrollbackfailed.Message;
+
+                                            log.Fatal("Fehler beim Exportieren.", îndexexception);
                                         }
 
-                                        // 
-                                        exporttaskstatustext = "Fehler beim Exportieren. Rollback wird ausgeführt.";
+                                        log.Debug(string.Format("Fehler beim Exportieren. Rollback {0} - Message: {1}.", indextransactionresult, indextransactionresultmessage));
 
                                         // fehleranzahl erhöhen
                                         errorcounter++;
@@ -532,19 +604,33 @@ namespace EbisExporter
                     }
                     else
                     {
+                        log.Debug("keine referenzen gefunden");
+
                         if (referenztaskstatus == Status.abgeschlossen)
+                        {
+                            log.Debug("referenztaskstatus nicht abgeschlossen, suche weiter..");
+
                             finished = true;
-                    }
+                        }
+                    }        
                     
                     //
                     if (cancelation)
+                    {
+                        log.Debug("export abgebrochen");
                         break;
+                    }
+                       
 
                     //
                     if (finished)
                     {
                         exporttaskstatustext = "Export abgeschlossen";
                         exporttaskstatus = Status.abgeschlossen;
+
+                        log.Debug(exporttaskstatustext);
+
+
                         break;
                     }
                         
@@ -553,6 +639,9 @@ namespace EbisExporter
                     {
                         exporttaskstatus = Status.fehler;
                         exporttaskstatustext = string.Format("Maximale Anzahl an Fehlern {0} überschritten.", maxerrors);
+
+                        log.Debug(exporttaskstatustext);
+
                         break;
                     }
                 }
@@ -571,7 +660,9 @@ namespace EbisExporter
             // info enum setzen
             referenztaskstatus = Status.gestartet;
 
-            while(true)
+            log.Debug("referenzen exporttask gestartet");
+
+            while (true)
             {
                 // suche starten
                 Search search = session.CreateSearch();
@@ -643,6 +734,7 @@ namespace EbisExporter
 
                                 //
                                 referenztaskstatustext = string.Format("Referenz {0} erfolgreich geschrieben.", mappenid);
+                                log.Debug(referenztaskstatustext);
                             }
 
                             if (cancelation)
@@ -658,6 +750,9 @@ namespace EbisExporter
                     {
                         referenztaskstatustext = string.Format("Referenzexport abgebrochen.");
                         referenztaskstatus = Status.abgebrochen;
+
+                        log.Debug(referenztaskstatustext);
+
                         break;
                     }
                 }          
@@ -666,6 +761,8 @@ namespace EbisExporter
             // abgeschlossen
             referenztaskstatustext = string.Format("Referenzexport abgeschlossen.");
             referenztaskstatus = Status.abgeschlossen;
+
+            log.Debug(referenztaskstatustext);
         }
 
         /// <summary>
