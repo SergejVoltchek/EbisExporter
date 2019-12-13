@@ -416,7 +416,7 @@ namespace EbisExporter
                                     if (!field.SchemaAttribute.SystemField)
                                     {
                                         insert += (",[" + field.Name + "]");
-                                        values += (",'" + (((field.Value != null) ? field.Value.ToString() : "") + "'"));
+                                        values += (",'" +  (((field.Value != null) ? field.Value.ToString().Replace("'", "''") : "") + "'"));
                                     }
                                 }
 
@@ -649,9 +649,6 @@ namespace EbisExporter
                     }
                 }
             }
-
-            //
-            
         }
 
         
